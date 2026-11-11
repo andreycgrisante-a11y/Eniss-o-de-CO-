@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -158,7 +159,10 @@ if(ch)r.nf=String(+ch.slice(25,34));else{const m=flat.match(/N[º°o]\.?\s*0*(\d
 let m=flat.match(/EMISS[ÃA]O[^\d]{0,40}(\d{2}\/\d{2}\/\d{4})/i)||flat.match(/(\d{2}\/\d{2}\/\d{4})/);if(m)r.d=pd(m[1]);
 m=flat.match(/RECEBEMOS DE (.+?) OS PRODUTOS/i);if(m)r.em=m[1].trim();
 const cut=s=>s.split(/\s\d{2}\.?\d{3}\.?\d{3}\/?\s?\d{4}\s?-?\s?\d{2}|\s\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\s\d{2}\/\d{2}\/\d{4}/)[0].trim();
-let i=lines.findIndex(l=>/DESTINAT[ÁA]RIO/i.test(l)&&/REMETENTE/i.test(l));if(i>=0){const j=lines.findIndex((l,k)=>k>i&&/NOME\s*\/\s*RAZ[ÃA]O/i.test(l));if(j>=0&&lines[j+1])r.dst=cut(lines[j+1])}
+let i=lines.findIndex(l=>/DESTINAT[ÁA]RIO/i.test(l)&&/REMETENTE/i.test(l));if(i>=0){const j=lines.findIndex((l,k)=>k>i&&/NOME\s*\/\s*RAZ[ÃA]O/i.test(l));if(j>=0&&lines[j+1])r.dst=cut(lines[j+1]);
+const e=lines.findIndex((l,k)=>k>i&&/^ENDERE[ÇC]O/i.test(l)),u=lines.findIndex((l,k)=>k>i&&/^MUNIC[ÍI]PIO/i.test(l));
+if(e>=0&&lines[e+1])r.da=lines[e+1].split(/\s{2,}|\s(?=[A-ZÇÃ]{4,}\s+[A-Z]*\s*\d{5}-?\d{3})/)[0].replace(/\s\d{5}\s?-\s?\d{3}.*$/,"").trim();
+if(u>=0&&lines[u+1]){const mm=lines[u+1].match(/^(.+?)\s+\d{6,}\s+([A-Z]{2})\b/)||lines[u+1].match(/^(.+?)\s+([A-Z]{2})\b/);if(mm)r.de=mm[1].trim().toUpperCase()+"/"+mm[2]}}
 r.p=(flat.toUpperCase().match(/\b[A-Z]{3}-?\d[A-Z0-9]\d{2}\b/g)||[]).map(norm).find(p=>V(p))||"";
 i=lines.findIndex(l=>/PESO\s+BRUTO/i.test(l));if(i>=0&&lines[i+1]){const n=(lines[i+1].match(/\d{1,3}(?:\.\d{3})*,\d{1,3}/g)||[]).map(x=>parseFloat(x.replace(/\./g,"").replace(",",".")));if(n.length)r.w=n.length>1?n[n.length-2]:n[0]}
 return r}
@@ -169,15 +173,15 @@ $("#qt").oninput=e=>{const t=e.target,tr=t.closest("tr");if(!tr||!t.dataset.k)re
 if(t.dataset.k==="cd"){const c=D.cds.find(x=>x.id===t.value);q.cd=t.value;if(c){q.o=c.mun||c.nome;q.oa=c.end?c.end+", "+(c.mun||""):""}else q.oa="";rQ();return}
 if(t.dataset.k==="o"){q.cd="";q.oa="";const s=tr.querySelector('select[data-k="cd"]');if(s)s.value=""}
 q[t.dataset.k]=t.value};
-$("#qt").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.map){const q=Q[+b.dataset.map];openMap(q.oa||q.o,q.de)}else if(b.dataset.rm){Q.splice(+b.dataset.rm,1);rQ()}};
+$("#qt").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.map){const q=Q[+b.dataset.map];openMap(q.oa||q.o,(q.da?q.da+", ":"")+q.de)}else if(b.dataset.rm){Q.splice(+b.dataset.rm,1);rQ()}};
 $("#cmode").onchange=()=>{setCl();rQ()};$("#qclr").onclick=()=>{Q=[];rQ()};
 $("#nu").onchange=async e=>{const fs=[...e.target.files];e.target.value="";if(!window.pdfjsLib)return toast("Leitor de PDF não carregou.");let sm=null;try{sm=await window.claude?.use("sample")}catch(x){}
 toast("Lendo "+fs.length+" PDF(s)...");
 for(const f of fs){try{const t=await pdfText(f),r=parseNF(t);
 if(sm){try{const j=await sm.json("Extraia os dados desta NF-e (DANFE). Responda somente JSON com as chaves: emitente, destinatario, origem (município do emitente), destino (município do destinatário), data (dd/mm/aaaa), numero, placa, peso_bruto_kg (número). Use \"\" quando não encontrar.\n\nTEXTO:\n"+t.slice(0,7000),{modelTier:"quick"});
-if(j){r.em=j.emitente||r.em;r.dst=j.destinatario||r.dst;r.o=j.origem||"";r.de=j.destino||"";if(!r.d&&j.data)r.d=pd(j.data);if(!r.nf&&j.numero)r.nf=String(+String(j.numero).replace(/\D/g,"")||"");if(!r.p&&V(norm(j.placa))&&norm(t).includes(norm(j.placa)))r.p=norm(j.placa);if(!r.w&&+j.peso_bruto_kg)r.w=+j.peso_bruto_kg}}catch(x){}}
+if(j){r.em=j.emitente||r.em;r.dst=j.destinatario||r.dst;r.o=j.origem||"";r.de=r.de||j.destino||"";if(!r.d&&j.data)r.d=pd(j.data);if(!r.nf&&j.numero)r.nf=String(+String(j.numero).replace(/\D/g,"")||"");if(!r.p&&V(norm(j.placa))&&norm(t).includes(norm(j.placa)))r.p=norm(j.placa);if(!r.w&&+j.peso_bruto_kg)r.w=+j.peso_bruto_kg}}catch(x){}}
 if(!r.nf&&!r.em&&!r.dst){toast(f.name+": não foi possível ler (PDF escaneado ou imagem?).");continue}
-Q.push({f:f.name,nf:r.nf||"",d:r.d||"",em:r.em||"",dst:r.dst||"",o:r.o||"",de:r.de||"",p:r.p||"",km:"",m:"Misto",w:r.w||"",cl:""})}catch(x){toast(f.name+": erro ao ler o PDF.")}}
+Q.push({f:f.name,nf:r.nf||"",d:r.d||"",em:r.em||"",dst:r.dst||"",o:r.o||"",de:r.de||"",da:r.da||"",p:r.p||"",km:"",m:"Misto",w:r.w||"",cl:""})}catch(x){toast(f.name+": erro ao ler o PDF.")}}
 setCl();rQ();if(Q.length)toast("Dados extraídos. Informe o km de cada NF e confira antes de lançar.")};
 $("#qgo").onclick=()=>{let ok=0,bad=0;Q=Q.filter(q=>{const km=+q.km;if(!q.nf||!q.d||!q.cl||!V(q.p)||!(km>0)||D.nfs.some(n=>n.nf===q.nf&&n.cl===q.cl.trim())){bad++;return true}
 D.nfs.push({id:Date.now()+Math.random(),nf:q.nf,d:q.d,cl:q.cl.trim(),p:q.p,o:q.o,...(q.cd?{cn:(D.cds.find(c=>c.id===q.cd)||{}).nome}:{}),de:q.de,km,m:q.m,w:+q.w||0});ok++;return false});save();rQ();rNF();rSel();toast(`${ok} NF(s) lançada(s)${bad?`; ${bad} pendente(s): confira NF, data, cliente, veículo e km (ou NF já lançada)`:""}.`)};
@@ -278,3 +282,5 @@ $("#ri").onchange=async e=>{try{const j=JSON.parse(await e.target.files[0].text(
 function init(){$("#lg").src=LOGO;rCd();$("#usr").value=D.user||"";rVeh();rSel();rNF();rRel()}
 init();
 </script></body></html>
+
+</body></html>
