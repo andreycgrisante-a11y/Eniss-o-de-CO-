@@ -24,6 +24,11 @@ input,select,button{font:inherit;padding:7px 9px;border:1px solid var(--bd);bord
 button{cursor:pointer}.pr{background:var(--pr);color:var(--pt);border-color:var(--pr);font-weight:600}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 [hidden]{display:none!important}
+.ddw{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mu);position:relative}.dd{position:relative}
+.ddb{width:100%;text-align:left;display:flex;justify-content:space-between;gap:8px}.ddb:after{content:"▾"}
+.ddp{position:absolute;z-index:20;left:0;right:0;min-width:240px;margin-top:2px;background:var(--cd);border:1px solid var(--bd);border-radius:8px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.dds{width:100%}.ddo{max-height:220px;overflow:auto;margin:6px 0}.ddo label{flex-direction:row;align-items:center;gap:6px;color:var(--tx);font-size:13px;padding:3px 2px}
+.ddf{display:flex;gap:6px}
 .ck{flex-direction:row;align-items:center;gap:6px;color:var(--tx);font-size:13px}input[type=checkbox]{padding:0;width:16px;height:16px}
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}th{background:var(--hd)}.r{text-align:right}
@@ -44,8 +49,8 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--bd);text-align:left;white-sp
 <section id="rel" class="card">
 <div class="g">
 <label>De<input type="date" id="rd"></label><label>Até<input type="date" id="ra"></label>
-<label>Clientes (vazio = todos)<select id="fc" multiple size="4"></select></label>
-<label>Veículos / placas (vazio = todos)<select id="fp" multiple size="4"></select></label>
+<div class="ddw"><span class="ddl">Clientes</span><select id="fc" multiple hidden></select><div class="dd" data-for="fc"><button type="button" class="ddb"></button><div class="ddp" hidden><input class="dds" placeholder="Buscar..."><div class="ddo"></div><div class="ddf"><button type="button" data-a="all">Marcar todos</button><button type="button" data-a="none">Limpar</button></div></div></div></div>
+<div class="ddw"><span class="ddl">Veículos / placas</span><select id="fp" multiple hidden></select><div class="dd" data-for="fp"><button type="button" class="ddb"></button><div class="ddp" hidden><input class="dds" placeholder="Buscar..."><div class="ddo"></div><div class="ddf"><button type="button" data-a="all">Marcar todos</button><button type="button" data-a="none">Limpar</button></div></div></div></div>
 <label>NFs específicas (separe por vírgula)<input id="rn" placeholder="ex.: 1234, 1235"></label></div>
 <div class="row"><button data-q="s">Semana atual</button><button data-q="m">Mês atual</button><button data-q="a">Ano atual</button><button data-q="x">Todo o período</button>
 <button class="pr" id="bpdf">Gerar PDF</button><button class="pr" id="bxls">Exportar Excel</button></div>
@@ -109,7 +114,14 @@ const V=p=>D.veh.find(v=>v.p===p);
 function calc(n){const v=V(n.p);if(!v)return null;const c=n.m==="Cidade"?v.cc:n.m==="Estrada"?v.ce:(v.cc+v.ce)/2,l=c>0?n.km/c:0;return{v,c,l,kg:l*v.f}}
 function toast(t){const e=$("#toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,4000)}
 const sel=id=>[...$(id).selectedOptions].map(o=>o.value);
-function fillSel(id,vals,lab){const cur=sel(id);$(id).innerHTML=vals.map(v=>`<option value="${esc(v)}"${cur.includes(v)?" selected":""}>${esc(lab?lab(v):v)}</option>`).join("")}
+function fillSel(id,vals,lab){const cur=sel(id);$(id).innerHTML=vals.map(v=>`<option value="${esc(v)}"${cur.includes(v)?" selected":""}>${esc(lab?lab(v):v)}</option>`).join("");ddR(id)}
+function ddR(id){const w=document.querySelector(`.dd[data-for="${id.slice(1)}"]`);if(!w)return;const o=[...$(id).options],n=o.filter(x=>x.selected),q=nh(w.querySelector(".dds").value);
+w.querySelector(".ddb").innerHTML=`<span>${n.length===0?"Todos":n.length===1?esc(n[0].text):n.length+" selecionados"}</span>`;
+w.querySelector(".ddo").innerHTML=o.map((x,i)=>({x,i})).filter(({x})=>!q||nh(x.text).includes(q)).map(({x,i})=>`<label><input type="checkbox" data-i="${i}"${x.selected?" checked":""}> ${esc(x.text)}</label>`).join("")||'<span style="color:var(--mu)">Nada encontrado</span>'}
+document.addEventListener("click",e=>{$$(".dd").forEach(w=>{const pn=w.querySelector(".ddp");if(!w.contains(e.target))pn.hidden=true;else if(e.target.closest(".ddb")){const h=!pn.hidden;$$(".ddp").forEach(x=>x.hidden=true);pn.hidden=h;if(!h)w.querySelector(".dds").focus()}
+ else if(e.target.dataset.a){const id="#"+w.dataset.for;[...$(id).options].forEach(x=>x.selected=e.target.dataset.a==="all");ddR(id)}})});
+document.addEventListener("change",e=>{const w=e.target.closest(".dd");if(!w||e.target.dataset.i==null)return;const id="#"+w.dataset.for;$(id).options[+e.target.dataset.i].selected=e.target.checked;ddR(id)});
+document.addEventListener("input",e=>{const w=e.target.closest(".dd");if(w&&e.target.classList.contains("dds"))ddR("#"+w.dataset.for)});
 function rSel(){const cl=[...new Set(D.nfs.map(n=>n.cl))].sort(),ps=D.veh.map(v=>v.p).sort(),lb=p=>p+" · "+V(p).n;fillSel("#fc",cl);fillSel("#fp",ps,lb);fillSel("#np",ps,lb);$("#cls").innerHTML=cl.map(c=>`<option value="${esc(c)}">`).join("")}
 const fmt=(rows,ints=[])=>rows.map(r=>r.map((x,i)=>typeof x==="number"?(ints.includes(i)?String(x):f2(x)):x));
 function tbl(h,rows,ints){const f=fmt(rows,ints),nm=h.map((_,i)=>typeof rows[0]?.[i]==="number");return`<div class="tw"><table><thead><tr>${h.map((x,i)=>`<th${nm[i]?' class="r"':""}>${esc(x)}</th>`).join("")}</tr></thead><tbody>${f.length?f.map(r=>`<tr>${r.map((x,i)=>`<td${nm[i]?' class="r"':""}>${esc(x)}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${h.length}">Nenhuma NF encontrada para os filtros.</td></tr>`}</tbody></table></div>`}
